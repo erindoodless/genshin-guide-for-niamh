@@ -83,7 +83,11 @@
             Sun, 
             Moon, 
             Sunrise, 
-            FileSpreadsheet 
+            FileSpreadsheet,
+            Calculator,
+            Table,
+            X,
+            Coins
         } from 'lucide-react';
 
         // --- STATIC DATA DEFINITIONS ---
@@ -102,12 +106,90 @@
             { id: 'teapot_buy', label: 'Buy Resin/XP from Tubby' },
         ];
 
+        // Domain Schedule Data
+        const ROTATION_DATA = {
+            Monday: { weapons: ["Decarabian", "Boreal Wolf", "Dandelion Gladiator"], talents: ["Freedom", "Prosperity", "Transience"] },
+            Tuesday: { weapons: ["Guyun", "Mist Veiled", "Aerosiderite"], talents: ["Resistance", "Diligence", "Elegance"] },
+            Wednesday: { weapons: ["Mask", "Tooth", "Fetters"], talents: ["Ballad", "Gold", "Light"] },
+            Thursday: { weapons: ["Decarabian", "Boreal Wolf", "Dandelion Gladiator"], talents: ["Freedom", "Prosperity", "Transience"] },
+            Friday: { weapons: ["Guyun", "Mist Veiled", "Aerosiderite"], talents: ["Resistance", "Diligence", "Elegance"] },
+            Saturday: { weapons: ["Mask", "Tooth", "Fetters"], talents: ["Ballad", "Gold", "Light"] },
+            Sunday: { weapons: ["ALL MATERIALS AVAILABLE"], talents: ["ALL BOOKS AVAILABLE"] }
+        };
+
+        // Detailed Build Data combined from KQM/Wiki
+        const CORE_FOUR_DATA = [
+            { 
+                id: "keqing",
+                name: "Keqing", 
+                role: "Main Attacker", 
+                element: "Electro",
+                tip: "She hits fast with electricity! Use her with the Dendro Traveler to do big damage.", 
+                img: "https://static.wikia.nocookie.net/gensin-impact/images/5/52/Keqing_Icon.png/revision/latest?cb=20210213162751",
+                color: "bg-purple-100 border-purple-300 text-purple-900",
+                build: {
+                    weapons: ["Lion's Roar (4★)", "Iron Sting (F2P)", "Harbinger of Dawn (3★)"],
+                    artifacts: ["4pc Thundering Fury", "2pc Attack / 2pc Electro"],
+                    mainStats: ["Sands: ATK%", "Goblet: Electro DMG", "Circlet: Crit Rate/DMG"],
+                    materials: "Cor Lapis (Liyue Cliffs) & Whopperflower Nectar"
+                }
+            },
+            { 
+                id: "durin",
+                name: "Durin", 
+                role: "Fire Support", 
+                element: "Pyro",
+                tip: "Use his skills to set enemies on fire so others can react with it.", 
+                img: "https://static.wikia.nocookie.net/gensin-impact/images/b/ba/Durin_Icon.png/revision/latest?cb=20251203043105",
+                color: "bg-red-100 border-red-300 text-red-900",
+                build: {
+                    weapons: ["Favonius Sword (4★)", "Sacrificial Sword (4★)", "Sapwood Blade (F2P)"],
+                    artifacts: ["4pc Noblesse Oblige", "4pc Instructor (4★)"],
+                    mainStats: ["Sands: Energy Recharge", "Goblet: HP% or Pyro", "Circlet: Crit Rate (for Favonius)"],
+                    materials: "Unknown (Check Event/Update)"
+                }
+            },
+            { 
+                id: "qiqi",
+                name: "Qiqi", 
+                role: "Healer", 
+                element: "Cryo",
+                tip: "She keeps you alive. Give her lots of 'ATK' stats to make her heal more.", 
+                img: "https://static.wikia.nocookie.net/gensin-impact/images/b/b3/Qiqi_Icon.png/revision/latest?cb=20220316020612",
+                color: "bg-blue-100 border-blue-300 text-blue-900",
+                build: {
+                    weapons: ["Sacrificial Sword (4★)", "Favonius Sword (4★)", "Amenoma Kageuchi (F2P)"],
+                    artifacts: ["4pc Ocean-Hued Clam", "4pc Maiden Beloved"],
+                    mainStats: ["Sands: ATK% or ER", "Goblet: ATK%", "Circlet: Healing Bonus or ATK%"],
+                    materials: "Violetgrass (Liyue Cliffs) & Scrolls (Samachurls)"
+                }
+            },
+            { 
+                id: "traveler",
+                name: "Traveler (Dendro)", 
+                role: "Plant Support", 
+                element: "Dendro",
+                tip: "Go to Sumeru to get this power. It makes Keqing very strong!", 
+                img: "https://static.wikia.nocookie.net/gensin-impact/images/9/9c/Lumine_Icon.png/revision/latest?cb=20231214221939",
+                color: "bg-emerald-100 border-emerald-300 text-emerald-900",
+                build: {
+                    weapons: ["Favonius Sword (4★)", "Sapwood Blade (F2P)", "Sacrificial Sword (4★)"],
+                    artifacts: ["4pc Deepwood Memories", "4pc Noblesse Oblige"],
+                    mainStats: ["Sands: Energy Recharge", "Goblet: Dendro DMG", "Circlet: Crit Rate"],
+                    materials: "Windwheel Aster (Mondstadt) & Handguards (Inazuma)"
+                }
+            }
+        ];
+
         const App = () => {
             const [activeTab, setActiveTab] = useState('philosophy');
+            const [selectedChar, setSelectedChar] = useState(null);
             
             // --- STATE FOR INTERACTIVE CHECKLISTS ---
             const [checkedDaily, setCheckedDaily] = useState({});
             const [checkedWeekly, setCheckedWeekly] = useState({});
+            // --- STATE FOR PITY CALCULATOR ---
+            const [currentPity, setCurrentPity] = useState(0);
 
             // Load from local storage
             useEffect(() => {
@@ -148,6 +230,7 @@
             // --- DYNAMIC TIME & DATE LOGIC ---
             const today = new Date();
             const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+            const currentRotation = ROTATION_DATA[dayName] || ROTATION_DATA['Sunday'];
             const hour = today.getHours();
 
             let GreetingIcon = Sun;
@@ -157,7 +240,14 @@
 
             const getDayAdvice = () => {
                 if (dayName === 'Sunday') return "It's Sunday! All domains are open. You can farm ANY material you want today!";
-                return `It's ${dayName}. Remember: Weapon/Talent domains rotate daily. Check if your character's books are available before spending Resin!`;
+                return `It's ${dayName}. Check the schedule below to see if your materials drop today!`;
+            };
+
+            const getPityStatus = (val) => {
+                if (val >= 90) return { text: "Guaranteed 5★ Now!", color: "bg-red-500 text-white" };
+                if (val >= 74) return { text: "Soft Pity (High Chance!)", color: "bg-orange-500 text-white" };
+                if (val >= 60) return { text: "Getting Close...", color: "bg-yellow-100 text-yellow-800" };
+                return { text: "Safe Zone (Low Chance)", color: "bg-slate-100 text-slate-600" };
             };
 
             // Simply worded priority list
@@ -202,50 +292,14 @@
                 }
             ];
 
-            const coreFour = [
-                { 
-                    name: "Keqing", 
-                    role: "Main Attacker", 
-                    tip: "She hits fast with electricity! Use her with the Dendro Traveler to do big damage.", 
-                    guideUrl: "https://keqingmains.com/q/keqing-quickguide/",
-                    color: "bg-purple-100 border-purple-300 text-purple-900",
-                    img: "https://static.wikia.nocookie.net/gensin-impact/images/5/52/Keqing_Icon.png/revision/latest?cb=20210213162751"
-                },
-                { 
-                    name: "Durin", 
-                    role: "Fire Support", 
-                    tip: "Use his skills to set enemies on fire so others can react with it.", 
-                    guideUrl: "https://www.ldshop.gg/blog/genshin-impact/durin-team.html",
-                    color: "bg-red-100 border-red-300 text-red-900",
-                    img: "https://static.wikia.nocookie.net/gensin-impact/images/b/ba/Durin_Icon.png/revision/latest?cb=20251203043105"
-                },
-                { 
-                    name: "Qiqi", 
-                    role: "Healer", 
-                    tip: "She keeps you alive. Give her lots of 'ATK' stats to make her heal more.", 
-                    guideUrl: "https://keqingmains.com/qiqi/",
-                    color: "bg-blue-100 border-blue-300 text-blue-900",
-                    img: "https://static.wikia.nocookie.net/gensin-impact/images/b/b3/Qiqi_Icon.png/revision/latest?cb=20220316020612"
-                },
-                { 
-                    name: "Traveler (Dendro)", 
-                    role: "Plant Support", 
-                    tip: "Go to Sumeru to get this power. It makes Keqing very strong!", 
-                    guideUrl: "https://keqingmains.com/q/dendro-traveler-quickguide/",
-                    color: "bg-emerald-100 border-emerald-300 text-emerald-900",
-                    img: "https://static.wikia.nocookie.net/gensin-impact/images/9/9c/Lumine_Icon.png/revision/latest?cb=20231214221939"
-                }
-            ];
-
             const resourceLinks = [
-                { title: "Build Guides (KQM)", desc: "Best weapons and gear for every character.", url: "https://keqingmains.com/", icon: <Star className="text-yellow-600" />, color: "bg-yellow-50 border-yellow-200" },
                 { title: "Wish Tracker", desc: "See how close you are to a 5-star character.", url: "https://paimon.moe/", icon: <Compass className="text-blue-600" />, color: "bg-blue-50 border-blue-200" },
                 { title: "Genshin Wiki", desc: "Stuck on a quest? Find guides here.", url: "https://genshin-impact.wiki.gg/wiki/Genshin_Impact_Wiki", icon: <Search className="text-pink-600" />, color: "bg-pink-50 border-pink-200" },
                 { title: "Enka.Network", desc: "Make cool character cards to show friends.", url: "https://enka.network/", icon: <Camera className="text-orange-600" />, color: "bg-orange-50 border-orange-200" }
             ];
 
             return (
-                <div className="min-h-screen bg-indigo-50 p-3 md:p-6 font-sans text-slate-800 selection:bg-purple-200">
+                <div className="min-h-screen bg-indigo-50 p-3 md:p-6 font-sans text-slate-800 selection:bg-purple-200 relative">
                 <div className="max-w-4xl mx-auto">
                     
                     {/* Dynamic Header */}
@@ -390,27 +444,6 @@
                                 </p>
                             </div>
                             </div>
-                            
-                            {/* Priority Items Section */}
-                            <div className="mt-8">
-                            <h3 className="font-black text-xl mb-4 text-slate-800 flex items-center gap-2 bg-slate-100 p-3 rounded-lg">
-                                <ArrowUpCircle className="text-green-600" />
-                                What to Upgrade First?
-                            </h3>
-                            <div className="space-y-3">
-                                {priorityItems.map((item, idx) => (
-                                <div key={idx} className={`p-4 border-l-8 rounded-r-xl shadow-sm ${item.color}`}>
-                                    <div className="flex items-start gap-3">
-                                    <div className="bg-white/50 p-2 rounded-full mt-1">{item.icon}</div>
-                                    <div>
-                                        <h4 className="font-black text-base md:text-lg">{item.title}</h4>
-                                        <div className="text-xs md:text-sm font-medium opacity-90">{item.desc}</div>
-                                    </div>
-                                    </div>
-                                </div>
-                                ))}
-                            </div>
-                            </div>
                         </div>
                     )}
 
@@ -516,6 +549,28 @@
                             </div>
                             </div>
 
+                        </div>
+
+                        {/* DOMAIN ROTATION CARD (REPLACED) */}
+                        <div className="mt-8 p-5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-2xl shadow-lg transform hover:scale-[1.01] transition-transform">
+                            <div className="flex items-center gap-4 mb-3">
+                                <Calendar className="w-8 h-8 text-yellow-100" />
+                                <h3 className="font-black text-xl uppercase">Drops Today ({dayName})</h3>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="bg-white/20 p-3 rounded-lg">
+                                    <h4 className="font-bold text-yellow-100 mb-1 border-b border-white/30 pb-1">Weapon Materials</h4>
+                                    <ul className="list-disc pl-4 space-y-1">
+                                        {currentRotation.weapons.map((item, i) => <li key={i}>{item}</li>)}
+                                    </ul>
+                                </div>
+                                <div className="bg-white/20 p-3 rounded-lg">
+                                    <h4 className="font-bold text-yellow-100 mb-1 border-b border-white/30 pb-1">Talent Books</h4>
+                                    <ul className="list-disc pl-4 space-y-1">
+                                        {currentRotation.talents.map((item, i) => <li key={i}>{item}</li>)}
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Resin Card */}
@@ -651,13 +706,11 @@
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                            {coreFour.map((char, idx) => (
-                            <a 
-                                key={idx} 
-                                href={char.guideUrl}
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className={`block p-5 rounded-2xl border-2 shadow-sm ${char.color} relative overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md group`}
+                            {CORE_FOUR_DATA.map((char) => (
+                            <div 
+                                key={char.id} 
+                                onClick={() => setSelectedChar(char)}
+                                className={`cursor-pointer block p-5 rounded-2xl border-2 shadow-sm ${char.color} relative overflow-hidden transition-all hover:scale-[1.02] hover:shadow-md group`}
                             >
                                 <div className="flex justify-between items-start mb-2 relative z-10">
                                 <div className="flex-1">
@@ -678,7 +731,8 @@
                                 </div>
                                 </div>
                                 <p className="text-sm font-medium mt-2 relative z-10 leading-relaxed">{char.tip}</p>
-                            </a>
+                                <div className="mt-3 text-xs font-bold text-center bg-white/60 py-1 rounded">Click for Build Guide</div>
+                            </div>
                             ))}
                         </div>
 
@@ -803,6 +857,104 @@
                             <iframe src="https://docs.google.com/spreadsheets/d/1gNxZ2xab1J6o1TuNVWMeLOZ7TPOqrsf3SshP5DLvKzI/preview" height="100%" width="100%" frameBorder="0" title="Community Builds Spreadsheet"></iframe>
                         </div>
 
+                        {/* NEW QUICK REFERENCE SECTION */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                            {/* Pity Calculator Card */}
+                            <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-purple-100">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <Calculator className="w-6 h-6 text-purple-600" />
+                                    <h3 className="font-black text-xl text-purple-900">Pity Calculator</h3>
+                                </div>
+                                <div className="bg-purple-50 p-4 rounded-xl mb-4">
+                                    <label className="text-xs font-bold text-purple-700 uppercase tracking-wider">Current Pity Count:</label>
+                                    <input 
+                                        type="number" 
+                                        value={currentPity} 
+                                        onChange={(e) => setCurrentPity(Math.max(0, Math.min(90, parseInt(e.target.value) || 0)))}
+                                        className="w-full mt-1 p-2 text-2xl font-black text-purple-900 bg-white border-2 border-purple-200 rounded-lg focus:outline-none focus:border-purple-500"
+                                    />
+                                </div>
+                                <div className={`p-3 rounded-lg text-center font-bold text-sm transition-colors ${getPityStatus(currentPity).color}`}>
+                                    {getPityStatus(currentPity).text}
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2 text-center">Hard Pity is 90. Soft Pity starts at 74.</p>
+                            </div>
+
+                            {/* Artifact Stats Reference */}
+                            <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-orange-100">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <Table className="w-6 h-6 text-orange-600" />
+                                    <h3 className="font-black text-xl text-orange-900">Artifact Stats</h3>
+                                </div>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+                                        <span className="font-bold text-slate-700">Flower</span>
+                                        <span className="bg-slate-100 px-2 py-1 rounded text-slate-500">HP (Fixed)</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+                                        <span className="font-bold text-slate-700">Feather</span>
+                                        <span className="bg-slate-100 px-2 py-1 rounded text-slate-500">ATK (Fixed)</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+                                        <span className="font-bold text-slate-700">Sands</span>
+                                        <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-bold">ATK% / ER / EM</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
+                                        <span className="font-bold text-slate-700">Goblet</span>
+                                        <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded font-bold">Element DMG%</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="font-bold text-slate-700">Circlet</span>
+                                        <span className="bg-red-100 text-red-800 px-2 py-1 rounded font-bold">Crit Rate / DMG</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* LEVELING CHEATSHEET (NEW) */}
+                        <div className="bg-blue-50 p-6 rounded-2xl shadow-lg border-2 border-blue-100 mb-10">
+                            <h3 className="font-black text-xl mb-4 text-blue-900 flex items-center gap-2"><Coins className="w-6 h-6 text-blue-600" /> Leveling Cost Cheatsheet</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div className="bg-white p-3 rounded-xl border border-blue-200">
+                                    <h4 className="font-bold text-blue-800 mb-2">Level 1 → 80</h4>
+                                    <ul className="space-y-1 text-slate-600">
+                                        <li className="flex justify-between"><span>Hero's Wit (Purple):</span> <span className="font-bold">~250</span></li>
+                                        <li className="flex justify-between"><span>Mora:</span> <span className="font-bold">~1,000,000</span></li>
+                                    </ul>
+                                </div>
+                                <div className="bg-white p-3 rounded-xl border border-blue-200">
+                                    <h4 className="font-bold text-blue-800 mb-2">Talents (1 → 6)</h4>
+                                    <ul className="space-y-1 text-slate-600">
+                                        <li className="flex justify-between"><span>Bronze Books:</span> <span className="font-bold">9</span></li>
+                                        <li className="flex justify-between"><span>Silver Books:</span> <span className="font-bold">63</span></li>
+                                        <li className="flex justify-between"><span>Mora:</span> <span className="font-bold">~120,000</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Reaction Cheat Sheet */}
+                        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-6 rounded-2xl shadow-lg mb-10">
+                            <h3 className="font-black text-xl mb-4 flex items-center gap-2"><Zap className="w-6 h-6 text-yellow-300" /> Dendro Reaction Cheat Sheet</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div className="bg-white/10 p-3 rounded-xl border border-white/20">
+                                    <div className="font-bold text-yellow-300 mb-1">Quicken (Aggravate)</div>
+                                    <div className="opacity-90">Dendro + Electro</div>
+                                    <div className="text-xs mt-1 opacity-75">Good for Keqing!</div>
+                                </div>
+                                <div className="bg-white/10 p-3 rounded-xl border border-white/20">
+                                    <div className="font-bold text-green-300 mb-1">Bloom (Cores)</div>
+                                    <div className="opacity-90">Dendro + Hydro</div>
+                                    <div className="text-xs mt-1 opacity-75">Makes bombs.</div>
+                                </div>
+                                <div className="bg-white/10 p-3 rounded-xl border border-white/20">
+                                    <div className="font-bold text-purple-300 mb-1">Hyperbloom</div>
+                                    <div className="opacity-90">Bloom Core + Electro</div>
+                                    <div className="text-xs mt-1 opacity-75">Seeker missiles!</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <h2 className="text-2xl md:text-3xl font-black mb-6 text-slate-800 flex items-center gap-3">
                             <Gift className="text-purple-500 w-8 h-8 md:w-10 md:h-10" />
                             How Wishes Work
@@ -878,6 +1030,62 @@
                     )}
 
                     </div>
+
+                    {/* MODAL FOR CHARACTER DETAILS */}
+                    {selectedChar && (
+                        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200" onClick={() => setSelectedChar(null)}>
+                            <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto relative" onClick={e => e.stopPropagation()}>
+                                <button onClick={() => setSelectedChar(null)} className="absolute top-4 right-4 bg-slate-100 p-2 rounded-full hover:bg-slate-200 transition-colors">
+                                    <X className="w-6 h-6 text-slate-600" />
+                                </button>
+                                
+                                <div className={`h-32 ${selectedChar.color.replace('text-', 'bg-').replace('border-', '')} relative flex items-end p-6`}>
+                                    <img 
+                                        src={selectedChar.img} 
+                                        className="w-24 h-24 rounded-full border-4 border-white shadow-xl absolute -bottom-12 left-6 bg-white object-cover"
+                                        alt={selectedChar.name}
+                                    />
+                                </div>
+                                
+                                <div className="pt-16 px-6 pb-8">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h2 className="text-3xl font-black text-slate-900">{selectedChar.name}</h2>
+                                            <span className="inline-block bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">{selectedChar.role} • {selectedChar.element}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 space-y-6">
+                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <h4 className="font-bold flex items-center gap-2 text-slate-700 mb-2"><Sword className="w-4 h-4" /> Best Weapons</h4>
+                                            <ul className="list-disc pl-5 text-sm text-slate-600 space-y-1">
+                                                {selectedChar.build.weapons.map((w, i) => <li key={i}>{w}</li>)}
+                                            </ul>
+                                        </div>
+
+                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <h4 className="font-bold flex items-center gap-2 text-slate-700 mb-2"><Gift className="w-4 h-4" /> Best Artifacts</h4>
+                                            <ul className="list-disc pl-5 text-sm text-slate-600 space-y-1">
+                                                {selectedChar.build.artifacts.map((a, i) => <li key={i}>{a}</li>)}
+                                            </ul>
+                                        </div>
+
+                                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                            <h4 className="font-bold flex items-center gap-2 text-slate-700 mb-2"><Table className="w-4 h-4" /> Main Stats</h4>
+                                            <ul className="list-disc pl-5 text-sm text-slate-600 space-y-1">
+                                                {selectedChar.build.mainStats.map((s, i) => <li key={i}>{s}</li>)}
+                                            </ul>
+                                        </div>
+
+                                        <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
+                                            <h4 className="font-bold flex items-center gap-2 text-orange-800 mb-2"><Leaf className="w-4 h-4" /> Farming Materials</h4>
+                                            <p className="text-sm text-orange-900 font-medium">{selectedChar.build.materials}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Footer */}
                     <footer className="mt-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest pb-8">
